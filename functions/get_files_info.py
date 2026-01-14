@@ -1,6 +1,22 @@
 # python
 # File: `functions/get_files_info.py`
 from pathlib import Path
+from google.genai import types
+
+schema_get_files_info = types.FunctionDeclaration(
+    name="get_files_info",
+    description="Lists files in a specified directory relative to the working directory, providing file size and directory status",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "directory": types.Schema(
+                type=types.Type.STRING,
+                description="Directory path to list files from, relative to the working directory (default is the working directory itself)",
+            ),
+        },
+    ),
+)
+
 
 def get_files_info(work_dir: str, directory: str) -> str:
     """
@@ -8,7 +24,9 @@ def get_files_info(work_dir: str, directory: str) -> str:
     Return lines like:
      - name: file_size=123 bytes, is_dir=False
     Or return an error string prefixed with 'Error:'.
+
     """
+
     try:
         project_root = Path(__file__).resolve().parent.parent
         target = (project_root / work_dir / directory).resolve()
