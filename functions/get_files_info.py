@@ -1,5 +1,3 @@
-# python
-# File: `functions/get_files_info.py`
 from pathlib import Path
 from google.genai import types
 
@@ -14,26 +12,23 @@ schema_get_files_info = types.FunctionDeclaration(
                 description="Directory path to list files from, relative to the working directory (default is the working directory itself)",
             ),
         },
+        # NOTE: directory is optional on purpose
     ),
 )
 
-
-def get_files_info(work_dir: str, directory: str) -> str:
-    """
-    List items under project_root / work_dir / directory.
-    Return lines like:
-     - name: file_size=123 bytes, is_dir=False
-    Or return an error string prefixed with 'Error:'.
-
-    """
-
+def get_files_info(working_directory: str, directory: str = ".") -> str:
     try:
         project_root = Path(__file__).resolve().parent.parent
-        target = (project_root / work_dir / directory).resolve()
+        working_root = (project_root / working_directory).resolve()
 
-        # Ensure target is inside the permitted project root
+        # If directory is missing/empty, treat it as "."
+        if not directory:
+            directory = "."
+
+        target = (working_root / directory).resolve()
+
         try:
-            target.relative_to(project_root)
+            target.relative_to(working_root)
         except Exception:
             return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
 
@@ -52,6 +47,4 @@ def get_files_info(work_dir: str, directory: str) -> str:
 
         return "\n".join(entries)
     except Exception as e:
-        return f'Error: {e}'
-
-
+        return f"Error: {e}"

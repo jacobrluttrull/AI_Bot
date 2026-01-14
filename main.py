@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 import argparse
 from prompts import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -46,8 +46,31 @@ def main():
     function_calls = getattr(response, "function_calls", None)
 
     if function_calls:
+        function_results = []
+
         for function_call in function_calls:
-            print(f"Calling function: {function_call.name}({function_call.args})")
+            function_call_result = call_function(function_call, verbose=args.verbose)
+
+            # 1) Content must have parts
+            if not function_call_result.parts:
+                raise RuntimeError("Tool result had no parts")
+
+            # 2) First part must have function_response
+            function_response = function_call_result.parts[0].function_response
+            if function_response is None:
+                raise RuntimeError("Tool result part had no function_response")
+
+            # 3) function_response must have .response
+            if function_response.response is None:
+                raise RuntimeError("FunctionResponse.response was None")
+
+            # 4) Store the first Part for later
+            function_results.append(function_call_result.parts[0])
+
+            # 5) Verbose: print the actual tool result payload
+            if args.verbose:
+                print(f"-> {function_response.response}")
+
     else:
         if args.verbose:
             print(f"User prompt: {args.user_prompt}")
