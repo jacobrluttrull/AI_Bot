@@ -2,23 +2,26 @@
 # File: `functions/get_file_content.py`
 from pathlib import Path
 from config import MAX_CHARS
-from google.genai import types
 
-schema_get_file_content = types.FunctionDeclaration(
-    name="get_file_content",
-    description="Reads and returns the contents of a file relative to the working directory",
-    parameters=types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "file_path": types.Schema(
-                type=types.Type.STRING,
-                description="Path to the file to read, relative to the working directory",
-            ),
+# OpenAI tool schema (equivalent to Gemini FunctionDeclaration)
+schema_get_file_content = {
+    "type": "function",
+    "function": {
+        "name": "get_file_content",
+        "description": "Reads and returns the contents of a file relative to the working directory",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the file to read, relative to the working directory",
+                }
+            },
+            "required": ["file_path"],
+            "additionalProperties": False,
         },
-        required=["file_path"],
-    ),
-)
-
+    },
+}
 
 
 def get_file_content(working_directory: str, file_path: str) -> str:
@@ -42,11 +45,11 @@ def get_file_content(working_directory: str, file_path: str) -> str:
 
         with target.open("r", encoding="utf-8", errors="replace") as f:
             content = f.read(MAX_CHARS)
-            # After reading the first MAX_CHARS...
             if f.read(1):
-                content += f'[...File "{file_path}" truncated at {MAX_CHARS} characters]'
+                content += f'\n[...File "{file_path}" truncated at {MAX_CHARS} characters]'
 
         return content
     except Exception as e:
-        return f'Error: {e}'
+        return f"Error: {e}"
+
 

@@ -1,17 +1,19 @@
 import os
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
 import argparse
+import json
+from dotenv import load_dotenv
+from openai import OpenAI
+
 from prompts import system_prompt
 from call_function import available_functions, call_function
 
 load_dotenv()
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    raise RuntimeError("GEMINI_API_KEY not found in environment variables")
 
-client = genai.Client(api_key=api_key)
+api_key = os.environ.get("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError("OPENAI_API_KEY not found in environment variables")
+
+client = OpenAI(api_key=api_key)
 
 
 def main():
@@ -22,67 +24,55 @@ def main():
     args = parser.parse_args()
 
     messages = [
-        types.Content(
-            role="user",
-            parts=[types.Part(text=args.user_prompt)],
-        )
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": args.user_prompt},
     ]
 
     for _ in range(20):
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=messages,
-            config=types.GenerateContentConfig(
-                tools=[available_functions],
-                system_instruction=[system_prompt],
-            ),
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=messages,
+            tools=available_functions,
+            tool_choice="auto",
         )
 
-        # NEW: add candidates to conversation history
-        candidates = getattr(response, "candidates", None) or []
-        for candidate in candidates:
-            if candidate.content is not None:
-                messages.append(candidate.content)
+        if args.verbose and getattr(response, "usage", None):
+            usage = response.usage
+            print(f"Prompt tokens: {usage.prompt_tokens}")
+            print(f"Completion tokens: {usage.completion_tokens}")
+            print(f"Total tokens: {usage.total_tokens}")
 
-        function_calls = getattr(response, "function_calls", None)
+        assistant_msg = response.choices[0].message
+        tool_calls = assistant_msg.tool_calls or []
 
-        # If the model did NOT request any tools, we're done
-        if not function_calls:
-            if args.verbose:
-                usage = getattr(response, "usage_metadata", None)
-                prompt_tokens = getattr(usage, "prompt_token_count", None) if usage else None
-                response_tokens = getattr(usage, "candidates_token_count", None) if usage else None
+        # Append assistant message (only include tool_calls key if present)
+        assistant_entry = {"role": "assistant", "content": assistant_msg.content}
+        if tool_calls:
+            assistant_entry["tool_calls"] = tool_calls
+        messages.append(assistant_entry)
 
-                print(f"User prompt: {args.user_prompt}")
-                print(f"Prompt tokens: {prompt_tokens}")
-                print(f"Response tokens: {response_tokens}")
-
-            print(response.text)
+        # If no tool calls, we're done
+        if not tool_calls:
+            print(assistant_msg.content or "")
             break
 
-        # Otherwise: run tool calls and add tool results back to the conversation
-        function_results = []
+        # Execute each tool call and append tool results
+        for tool_call in tool_calls:
+            tool_result = call_function(tool_call, verbose=args.verbose)
 
-        for function_call in function_calls:
-            function_call_result = call_function(function_call, verbose=args.verbose)
-
-            if not function_call_result.parts:
-                raise RuntimeError("Tool result had no parts")
-
-            function_response = function_call_result.parts[0].function_response
-            if function_response is None:
-                raise RuntimeError("Tool result part had no function_response")
-
-            if function_response.response is None:
-                raise RuntimeError("FunctionResponse.response was None")
-
-            function_results.append(function_call_result.parts[0])
+            if not isinstance(tool_result, str):
+                tool_result = json.dumps(tool_result, ensure_ascii=False)
 
             if args.verbose:
-                print(f"-> {function_response.response}")
+                print(f"-> tool({tool_call.function.name}) result: {tool_result}")
 
-        # NEW: per instructions, append tool results as role="user"
-        messages.append(types.Content(role="user", parts=function_results))
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_result,
+                }
+            )
     else:
         print("Error: Reached max iterations (20) without a final response.")
         raise SystemExit(1)

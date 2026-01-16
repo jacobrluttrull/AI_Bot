@@ -1,26 +1,30 @@
-from google.genai import types
 import subprocess
 from pathlib import Path
 
-schema_run_python_file = types.FunctionDeclaration(
-    name="run_python_file",
-    description="Runs a Python file relative to the working directory and returns its STDOUT/STDERR",
-    parameters=types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "file_path": types.Schema(
-                type=types.Type.STRING,
-                description="Path to the Python file to run, relative to the working directory",
-            ),
-            "args": types.Schema(
-                type=types.Type.ARRAY,
-                items=types.Schema(type=types.Type.STRING),
-                description="Optional command-line arguments to pass to the Python file",
-            ),
+schema_run_python_file = {
+    "type": "function",
+    "function": {
+        "name": "run_python_file",
+        "description": "Runs a Python file relative to the working directory and returns its STDOUT/STDERR",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the Python file to run, relative to the working directory",
+                },
+                "args": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional command-line arguments to pass to the Python file",
+                },
+            },
+            "required": ["file_path"],
+            "additionalProperties": False,
         },
-        required=["file_path"],
-    ),
-)
+    },
+}
+
 
 def run_python_file(working_directory, file_path, args=None):
     try:
@@ -65,11 +69,3 @@ def run_python_file(working_directory, file_path, args=None):
         return "Error: Process timed out after 30 seconds"
     except Exception as e:
         return f"Error: executing Python file: {e}"
-
-
-
-
-
-
-
-

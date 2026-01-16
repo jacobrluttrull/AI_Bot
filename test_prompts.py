@@ -1,23 +1,22 @@
 # test_prompts.py
 import subprocess
-import shlex
 
 TEST_CASES = [
     (
         "read the contents of main.py",
-        "get_file_content({'file_path': 'main.py'})",
+        "Calling function: get_file_content",
     ),
     (
         "write 'hello' to main.txt",
-        "write_file({'file_path': 'main.txt', 'content': 'hello'})",
+        "Calling function: write_file",
     ),
     (
         "run main.py",
-        "run_python_file({'file_path': 'main.py'})",
+        "Calling function: run_python_file",
     ),
     (
         "list the contents of the pkg directory",
-        "get_files_info({'directory': 'pkg'})",
+        "Calling function: get_files_info",
     ),
 ]
 
@@ -29,28 +28,38 @@ def run_case(prompt: str) -> subprocess.CompletedProcess:
 
 
 def main() -> None:
-    for i, (prompt, expected) in enumerate(TEST_CASES, start=1):
+    for i, (prompt, expected_substring) in enumerate(TEST_CASES, start=1):
         print("=" * 80)
         print(f"CASE {i}")
         print(f"Prompt:   {prompt}")
-        print(f"Expect:   {expected}")
+        print(f"Expect:   {expected_substring} (substring)")
         print("-" * 80)
 
         result = run_case(prompt)
 
         print(f"Exit code: {result.returncode}")
 
-        if result.stdout.strip():
+        stdout = result.stdout.rstrip()
+        stderr = result.stderr.rstrip()
+
+        if stdout:
             print("\nSTDOUT:")
-            print(result.stdout.rstrip())
+            print(stdout)
         else:
             print("\nSTDOUT: <empty>")
 
-        if result.stderr.strip():
+        if stderr:
             print("\nSTDERR:")
-            print(result.stderr.rstrip())
+            print(stderr)
         else:
             print("\nSTDERR: <empty>")
+
+        # Simple pass/fail signal
+        combined = (stdout + "\n" + stderr)
+        if expected_substring in combined:
+            print("\nRESULT: PASS")
+        else:
+            print("\nRESULT: FAIL (expected substring not found)")
 
     print("=" * 80)
 
