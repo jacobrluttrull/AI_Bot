@@ -4,6 +4,7 @@ from functions.get_files_info import schema_get_files_info, get_files_info
 from functions.get_file_content import schema_get_file_content, get_file_content
 from functions.run_python_file import schema_run_python_file, run_python_file
 from functions.write_file import schema_write_file, write_file
+from functions.run_tests import schema_run_tests, run_tests
 
 
 # OpenAI expects a LIST of tools (each tool is a dict)
@@ -12,6 +13,8 @@ available_functions = [
     schema_get_file_content,
     schema_run_python_file,
     schema_write_file,
+    schema_run_tests,
+
 ]
 
 function_map = {
@@ -19,6 +22,7 @@ function_map = {
     "get_file_content": get_file_content,
     "run_python_file": run_python_file,
     "write_file": write_file,
+    "run_tests": run_tests,
 }
 
 
@@ -54,6 +58,6 @@ def call_function(tool_call, verbose: bool = False):
     try:
         function_result = func(**args)
         # Return a JSON string (model-friendly)
-        return json.dumps({"result": function_result}, ensure_ascii=False)
+        return function_result
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
