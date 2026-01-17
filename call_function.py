@@ -52,7 +52,10 @@ def call_function(tool_call, verbose: bool = False):
         args = {}
 
     # Inject your working directory (same behavior as before)
-    args["working_directory"] = "./calculator"
+    if function_name == "run_tests":
+        args["working_directory"] = "."
+    else:
+        args["working_directory"] = "./calculator"
 
     # Call the real function
     try:

@@ -5,37 +5,43 @@ schema_run_tests = {
     "type": "function",
     "function": {
         "name": "run_tests",
-        "description": "Runs the project's test suite and returns STDOUT/STDERR and exit code.",
+        "description": "Runs pytest for a given test path and returns STDOUT/STDERR plus exit code.",
         "parameters": {
             "type": "object",
             "properties": {
+                "path": {
+                    "type": "string",
+                    "description": (
+                        "Which tests to run (default: tests at repo root). "
+                        "Example: 'tests' or 'calculator/tests'."
+                    ),
+                },
                 "args": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Optional extra arguments for pytest (example: ['-q']).",
-                }
+                },
             },
             "required": [],
             "additionalProperties": False,
         },
     },
 }
-def run_tests(working_directory: str, args=None) -> str:
-    """
-    runs: uv run pytest <args>
-    returns output and the exit code.
-    :param working_directory:
-    :param str:
-    :param args:
-    :return:
-    """
 
+
+def run_tests(working_directory: str, path: str = "tests", args=None) -> str:
+    """
+    Runs: uv run pytest <path> <args...>
+    Returns output and exit code.
+    """
     try:
         project_root = Path(__file__).resolve().parent.parent
         working_root = (project_root / working_directory).resolve()
-        cmd = ["uv", "run", "pytest"]
+
+        cmd = ["uv", "run", "pytest", path]
         if args:
             cmd.extend(args)
+
         result = subprocess.run(
             cmd,
             cwd=working_root,
@@ -43,14 +49,18 @@ def run_tests(working_directory: str, args=None) -> str:
             text=True,
             timeout=120,
         )
-        stdout = result.stdout
-        stderr = result.stderr
+
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+
         return (
-            f"Exit Code: {result.returncode}\n"
-            f"STDOUT:\n{stdout}\n"
+            f"Exit code: {result.returncode}\n"
+            f"Command: {' '.join(cmd)}\n"
+            f"STDOUT:\n{stdout}\n\n"
             f"STDERR:\n{stderr}"
         )
+
     except subprocess.TimeoutExpired:
-        return "Error: Test execution timed out."
+        return "Error: Test execution timed out after 120 seconds."
     except Exception as e:
         return f"Error: {e}"

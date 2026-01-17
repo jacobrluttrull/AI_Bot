@@ -12,7 +12,7 @@ if not api_key:
     raise RuntimeError("OPENAI_API_KEY not found in environment variables")
 client = OpenAI(api_key=api_key)
 
-import json  # add at top
+
 
 def run_agent_turn(messages, verbose=False, model="gpt-5-nano"):
     for _ in range(15):
